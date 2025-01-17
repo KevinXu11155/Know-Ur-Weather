@@ -1,0 +1,673 @@
+Ôr@Ÿªassertions¤code´customTransformCache¬dependencies¢id¤meta±moduleSideEffects¬originalCode±originalSourcemap«resolvedIds®sourcemapChainµsyntheticNamedExportsµtransformDependencies®transformFiles¨cacheAstÔrAÚ ¹/**
+ * æ±‰å­—è½¬æ‹¼éŸ³
+ * 
+ * @auth superbiger(superbiger@qq.com)
+ */
+import { PinyinResource } from "./PinyinResource.js"
+import { ChineseHelper } from "./ChineseHelper.js"
+
+export var PinyinFormat = {
+    WITH_TONE_MARK      :"WITH_TONE_MARK",   //å¸¦å£°è°ƒ
+    WITHOUT_TONE        :"WITHOUT_TONE",     //ä¸å¸¦å£°è°ƒ
+    WITH_TONE_NUMBER    :"WITH_TONE_NUMBER", //æ•°å­—ä»£è¡¨å£°è°ƒ
+    FIRST_LETTER        :"FIRST_LETTER"      //é¦–å­—æ¯é£æ ¼
+}
+
+var PINYIN_TABLE = PinyinResource.getPinyinResource();  //å•å­—å­—å…¸
+var MUTIL_PINYIN_TABLE = PinyinResource.getMutilPinyinResource();  //è¯ç»„å­—å…¸
+var PINYIN_SEPARATOR = ","; //æ‹¼éŸ³åˆ†éš”ç¬¦
+var CHINESE_LING = 'ã€‡';
+var ALL_UNMARKED_VOWEL = "aeiouv";
+var ALL_MARKED_VOWEL = "ÄÃ¡ÇÃ Ä“Ã©Ä›Ã¨Ä«Ã­ÇÃ¬ÅÃ³Ç’Ã²Å«ÃºÇ”Ã¹Ç–Ç˜ÇšÇœ"; //æ‰€æœ‰å¸¦å£°è°ƒçš„æ‹¼éŸ³å­—æ¯
+
+export class PinyinHelper {
+    /**
+     * å°†å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³è½¬æ¢ä¸ºæ•°å­—ä»£è¡¨å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     */
+    static _convertWithToneNumber(str) {
+        var pinyinArray = str.split(PINYIN_SEPARATOR);
+        
+        for(var i=pinyinArray.length -1; i >=0; i--) {
+            var hasMarkedChar = false;
+            var originalPinyin = pinyinArray[i].replace("Ã¼", "v");
+            
+            for(var j=originalPinyin.length - 1; j >= 0; j--) {
+                var originalChar = originalPinyin.charAt(j);
+                if(originalChar < 'a' || originalChar > 'z') {
+                    var indexInAllMarked = ALL_MARKED_VOWEL.indexOf(originalChar);
+                    var toneNumber = indexInAllMarked % 4 + 1;
+                    var replaceChar = ALL_UNMARKED_VOWEL.charAt((indexInAllMarked - indexInAllMarked % 4) / 4);
+                    
+                    pinyinArray[i] = originalPinyin.replace(originalChar, replaceChar) + toneNumber;
+                    hasMarkedChar = true;
+                    break;
+                }
+            }
+            if(!hasMarkedChar) {
+                // æ‰¾ä¸åˆ°å¸¦å£°è°ƒçš„æ‹¼éŸ³å­—æ¯è¯´æ˜æ˜¯è½»å£°ï¼Œç”¨æ•°å­—5è¡¨ç¤º
+                pinyinArray[i] = originalPinyin + "5";
+            }
+        }
+        return pinyinArray;
+    }
+
+    /**
+     * å°†å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³è½¬æ¢ä¸ºä¸å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     */
+    static _convertWithoutTone(str) {
+        var pinyinArray;
+        for(var i = ALL_MARKED_VOWEL.length - 1; i >= 0; i--) {
+            var originalChar = ALL_MARKED_VOWEL.charAt(i);
+            var replaceChar = ALL_UNMARKED_VOWEL.charAt((i - i % 4) / 4);
+            str = str.replace(new RegExp(originalChar,"gm"), replaceChar);
+        }
+        pinyinArray = str.replace("Ã¼", "v").split(PINYIN_SEPARATOR);
+        return pinyinArray;
+    }
+
+    /**
+     * å°†å¸¦å£°è°ƒçš„æ‹¼éŸ³æ ¼å¼åŒ–ä¸ºç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static _formatPinyin(str, format) {
+        if (format == PinyinFormat.WITH_TONE_MARK) {
+			return str.split(PINYIN_SEPARATOR);
+		} else if (format == PinyinFormat.WITH_TONE_NUMBER) {
+			return this._convertWithToneNumber(str);
+		} else if (format == PinyinFormat.WITHOUT_TONE) {
+			return this._convertWithoutTone(str);
+		} else if (format == PinyinFormat.FIRST_LETTER) {
+            return this._convertWithoutTone(str);
+        }
+		return [];
+    }
+
+    /**
+     * å°†å•ä¸ªæ±‰å­—è½¬æ¢ä¸ºç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * 
+     * @param {string/char} c 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static _convertToPinyinArray(c, format) {
+        var pinyin = PINYIN_TABLE[c];
+        if(typeof(pinyin) != "undefined") {
+            var arr = [];
+            var pinyinArray = this._formatPinyin(pinyin, format);
+            for(var i = 0; i < pinyinArray.length; i++){
+                arr.push(pinyinArray[i]);
+            }
+            return arr;
+        }
+        return [];
+    }
+
+    /**
+     * è·å–ç»™å®šå­—ç¬¦ä¸²æ˜¯å¦åœ¨å­—å…¸ä¸­æ‰¾åˆ°è¯ç»„æ‹¼éŸ³å¯¹åº”å…³ç³»
+     * 
+     * ç®€åŒ–æ“ä½œ æš‚æ—¶åªæ”¯æŒ6å­—ä»¥å†…å­—å…¸æ£€æµ‹
+     * @param {string} str 
+     */
+    static _getWords(str) {
+        for(var i = 1; i < 6; i++) {
+            var temp = MUTIL_PINYIN_TABLE[str.substring(0, i)];
+            if(typeof(temp) != 'undefined'){
+                return [str.substring(0, i)];
+            }
+        }
+        return [];
+    }
+
+    /**
+     * å°†å­—ç¬¦ä¸²è½¬æ¢æˆç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * @param {string} str 
+     * @param {string} separator 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static convertToPinyinString(str, separator, format) {
+        var result = ['']
+        var pos = 0
+        str = ChineseHelper.convertToSimplifiedChinese(str);
+        var i = 0;
+        var strLen = str.length;
+        var str_result = '';
+        while(i < strLen) {
+            var subStr = str.substring(i);
+            var commonPrefixList = this._getWords(subStr); //è¯ç»„å­—å…¸æœ‰çš„æƒ…å†µè¿”å›è¯¥èµ·ç‚¹ä¸‹åˆ†è¯æ•°ç»„ï¼Œæ²¡æœ‰çš„æƒ…å†µè¿”å›ç©ºæ•°ç»„
+            if(commonPrefixList.length == 0) { //ä¸æ˜¯è¯ç»„
+                var c = str.charAt(i);
+                if(ChineseHelper.isChinese(c) || c == CHINESE_LING) {
+                    var pinyinArray = this._convertToPinyinArray(c, format);
+                    if(pinyinArray.length > 0) {
+                        if(format == PinyinFormat.FIRST_LETTER){
+                            pos++
+                            result[pos] = (pinyinArray[0].charAt(0))
+                        }else{
+                            pos++
+                            result[pos] = (pinyinArray[0]) + separator
+                        }
+                    }else{
+                        result[pos] += str.charAt(i)
+                    }
+                } else {
+                    result[pos] += str.charAt(i)
+                }
+                i++;
+            } else { //æ˜¯è¯ç»„
+                var words = commonPrefixList[commonPrefixList.length - 1];
+                var pinyinArray = this._formatPinyin(MUTIL_PINYIN_TABLE[words], format);
+                for(let j=0, l = pinyinArray.length; j < l; j++) {
+                    if(format == PinyinFormat.FIRST_LETTER){
+                        pos++
+                        result[pos] = (pinyinArray[j].charAt(0))
+                    }else{
+                        pos++
+                        result[pos] = (pinyinArray[j]) + separator
+                    }
+                }
+                i += words.length;
+            }
+        }
+        for(var i = 0; i < result.length; ++i) {
+            if (result[i] !== '') {
+                var reg=new RegExp(separator+"$")
+                if (reg.test(result[i])) {
+                    str_result += (result[i].replace('undefined', '').substring(0, result[i].length - separator.length) + separator)
+                } else {
+                    str_result += (result[i].replace('undefined', '') + separator)
+                }
+            }
+        }
+        if (str_result[str_result.length - 1] === separator) {
+            return str_result.substring(0, str_result.length - separator.length);
+        } else {
+            return str_result
+        }
+    }
+
+    /**
+     * è·å–å­—ç¬¦ä¸²å¯¹åº”æ‹¼éŸ³çš„é¦–å­—æ¯
+     * @param {string} str 
+     */
+    static getShortPinyin(str) {
+        return this.convertToPinyinString(str, '', PinyinFormat.FIRST_LETTER);
+    }
+
+    /**
+     * åˆ¤æ–­ä¸€ä¸ªæ±‰å­—æ˜¯å¦ä¸ºå¤šéŸ³å­—
+     * @param {string/char} c 
+     */
+    static hasMultiPinyin(c) {
+        var pinyin = PINYIN_TABLE[c];
+        if(typeof(c) != 'undefined'){
+            return pinyin.split(',').length > 1
+        }
+        return false;
+    }
+
+    static addPinyinDictResource(res) {
+        PINYIN_TABLE = Object.assign(res, PINYIN_TABLE);
+    }
+
+    static addMutilPinyinDictResource(res) {
+        MUTIL_PINYIN_TABLE = Object.assign(res, MUTIL_PINYIN_TABLE);
+    }
+}
+Â’Ù™C:\Users\Lenovo\Desktop\class\MAID\MyApp3\oh_modules\.ohpm\@ohos+pinyin4js@2.0.0\oh_modules\@ohos\pinyin4js\src\main\ets\components\src\PinyinResource.jsÙ˜C:\Users\Lenovo\Desktop\class\MAID\MyApp3\oh_modules\.ohpm\@ohos+pinyin4js@2.0.0\oh_modules\@ohos\pinyin4js\src\main\ets\components\src\ChineseHelper.jsÙ—C:\Users\Lenovo\Desktop\class\MAID\MyApp3\oh_modules\.ohpm\@ohos+pinyin4js@2.0.0\oh_modules\@ohos\pinyin4js\src\main\ets\components\src\PinyinHelper.jsÔrB™±isLocalDependency¯isNodeEntryFile§pkgPath§pkgNameªpkgVersion±belongProjectPath±dependencyPkgInfo¨commonjs¯hostModulesInfoÂÂÙkC:\Users\Lenovo\Desktop\class\MAID\MyApp3\oh_modules\.ohpm\@ohos+pinyin4js@2.0.0\oh_modules\@ohos\pinyin4js¯@ohos/pinyin4js¥2.0.0Ù)C:\Users\Lenovo\Desktop\class\MAID\MyApp3ÔrC’§pkgNameªpkgVersion¯@ohos/pinyin4js¥2.0.0ÔrD’¯hasNamedExportsªisCommonJSÃÂÃÚ ¹/**
+ * æ±‰å­—è½¬æ‹¼éŸ³
+ * 
+ * @auth superbiger(superbiger@qq.com)
+ */
+import { PinyinResource } from "./PinyinResource.js"
+import { ChineseHelper } from "./ChineseHelper.js"
+
+export var PinyinFormat = {
+    WITH_TONE_MARK      :"WITH_TONE_MARK",   //å¸¦å£°è°ƒ
+    WITHOUT_TONE        :"WITHOUT_TONE",     //ä¸å¸¦å£°è°ƒ
+    WITH_TONE_NUMBER    :"WITH_TONE_NUMBER", //æ•°å­—ä»£è¡¨å£°è°ƒ
+    FIRST_LETTER        :"FIRST_LETTER"      //é¦–å­—æ¯é£æ ¼
+}
+
+var PINYIN_TABLE = PinyinResource.getPinyinResource();  //å•å­—å­—å…¸
+var MUTIL_PINYIN_TABLE = PinyinResource.getMutilPinyinResource();  //è¯ç»„å­—å…¸
+var PINYIN_SEPARATOR = ","; //æ‹¼éŸ³åˆ†éš”ç¬¦
+var CHINESE_LING = 'ã€‡';
+var ALL_UNMARKED_VOWEL = "aeiouv";
+var ALL_MARKED_VOWEL = "ÄÃ¡ÇÃ Ä“Ã©Ä›Ã¨Ä«Ã­ÇÃ¬ÅÃ³Ç’Ã²Å«ÃºÇ”Ã¹Ç–Ç˜ÇšÇœ"; //æ‰€æœ‰å¸¦å£°è°ƒçš„æ‹¼éŸ³å­—æ¯
+
+export class PinyinHelper {
+    /**
+     * å°†å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³è½¬æ¢ä¸ºæ•°å­—ä»£è¡¨å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     */
+    static _convertWithToneNumber(str) {
+        var pinyinArray = str.split(PINYIN_SEPARATOR);
+        
+        for(var i=pinyinArray.length -1; i >=0; i--) {
+            var hasMarkedChar = false;
+            var originalPinyin = pinyinArray[i].replace("Ã¼", "v");
+            
+            for(var j=originalPinyin.length - 1; j >= 0; j--) {
+                var originalChar = originalPinyin.charAt(j);
+                if(originalChar < 'a' || originalChar > 'z') {
+                    var indexInAllMarked = ALL_MARKED_VOWEL.indexOf(originalChar);
+                    var toneNumber = indexInAllMarked % 4 + 1;
+                    var replaceChar = ALL_UNMARKED_VOWEL.charAt((indexInAllMarked - indexInAllMarked % 4) / 4);
+                    
+                    pinyinArray[i] = originalPinyin.replace(originalChar, replaceChar) + toneNumber;
+                    hasMarkedChar = true;
+                    break;
+                }
+            }
+            if(!hasMarkedChar) {
+                // æ‰¾ä¸åˆ°å¸¦å£°è°ƒçš„æ‹¼éŸ³å­—æ¯è¯´æ˜æ˜¯è½»å£°ï¼Œç”¨æ•°å­—5è¡¨ç¤º
+                pinyinArray[i] = originalPinyin + "5";
+            }
+        }
+        return pinyinArray;
+    }
+
+    /**
+     * å°†å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³è½¬æ¢ä¸ºä¸å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     */
+    static _convertWithoutTone(str) {
+        var pinyinArray;
+        for(var i = ALL_MARKED_VOWEL.length - 1; i >= 0; i--) {
+            var originalChar = ALL_MARKED_VOWEL.charAt(i);
+            var replaceChar = ALL_UNMARKED_VOWEL.charAt((i - i % 4) / 4);
+            str = str.replace(new RegExp(originalChar,"gm"), replaceChar);
+        }
+        pinyinArray = str.replace("Ã¼", "v").split(PINYIN_SEPARATOR);
+        return pinyinArray;
+    }
+
+    /**
+     * å°†å¸¦å£°è°ƒçš„æ‹¼éŸ³æ ¼å¼åŒ–ä¸ºç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static _formatPinyin(str, format) {
+        if (format == PinyinFormat.WITH_TONE_MARK) {
+			return str.split(PINYIN_SEPARATOR);
+		} else if (format == PinyinFormat.WITH_TONE_NUMBER) {
+			return this._convertWithToneNumber(str);
+		} else if (format == PinyinFormat.WITHOUT_TONE) {
+			return this._convertWithoutTone(str);
+		} else if (format == PinyinFormat.FIRST_LETTER) {
+            return this._convertWithoutTone(str);
+        }
+		return [];
+    }
+
+    /**
+     * å°†å•ä¸ªæ±‰å­—è½¬æ¢ä¸ºç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * 
+     * @param {string/char} c 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static _convertToPinyinArray(c, format) {
+        var pinyin = PINYIN_TABLE[c];
+        if(typeof(pinyin) != "undefined") {
+            var arr = [];
+            var pinyinArray = this._formatPinyin(pinyin, format);
+            for(var i = 0; i < pinyinArray.length; i++){
+                arr.push(pinyinArray[i]);
+            }
+            return arr;
+        }
+        return [];
+    }
+
+    /**
+     * è·å–ç»™å®šå­—ç¬¦ä¸²æ˜¯å¦åœ¨å­—å…¸ä¸­æ‰¾åˆ°è¯ç»„æ‹¼éŸ³å¯¹åº”å…³ç³»
+     * 
+     * ç®€åŒ–æ“ä½œ æš‚æ—¶åªæ”¯æŒ6å­—ä»¥å†…å­—å…¸æ£€æµ‹
+     * @param {string} str 
+     */
+    static _getWords(str) {
+        for(var i = 1; i < 6; i++) {
+            var temp = MUTIL_PINYIN_TABLE[str.substring(0, i)];
+            if(typeof(temp) != 'undefined'){
+                return [str.substring(0, i)];
+            }
+        }
+        return [];
+    }
+
+    /**
+     * å°†å­—ç¬¦ä¸²è½¬æ¢æˆç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * @param {string} str 
+     * @param {string} separator 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static convertToPinyinString(str, separator, format) {
+        var result = ['']
+        var pos = 0
+        str = ChineseHelper.convertToSimplifiedChinese(str);
+        var i = 0;
+        var strLen = str.length;
+        var str_result = '';
+        while(i < strLen) {
+            var subStr = str.substring(i);
+            var commonPrefixList = this._getWords(subStr); //è¯ç»„å­—å…¸æœ‰çš„æƒ…å†µè¿”å›è¯¥èµ·ç‚¹ä¸‹åˆ†è¯æ•°ç»„ï¼Œæ²¡æœ‰çš„æƒ…å†µè¿”å›ç©ºæ•°ç»„
+            if(commonPrefixList.length == 0) { //ä¸æ˜¯è¯ç»„
+                var c = str.charAt(i);
+                if(ChineseHelper.isChinese(c) || c == CHINESE_LING) {
+                    var pinyinArray = this._convertToPinyinArray(c, format);
+                    if(pinyinArray.length > 0) {
+                        if(format == PinyinFormat.FIRST_LETTER){
+                            pos++
+                            result[pos] = (pinyinArray[0].charAt(0))
+                        }else{
+                            pos++
+                            result[pos] = (pinyinArray[0]) + separator
+                        }
+                    }else{
+                        result[pos] += str.charAt(i)
+                    }
+                } else {
+                    result[pos] += str.charAt(i)
+                }
+                i++;
+            } else { //æ˜¯è¯ç»„
+                var words = commonPrefixList[commonPrefixList.length - 1];
+                var pinyinArray = this._formatPinyin(MUTIL_PINYIN_TABLE[words], format);
+                for(let j=0, l = pinyinArray.length; j < l; j++) {
+                    if(format == PinyinFormat.FIRST_LETTER){
+                        pos++
+                        result[pos] = (pinyinArray[j].charAt(0))
+                    }else{
+                        pos++
+                        result[pos] = (pinyinArray[j]) + separator
+                    }
+                }
+                i += words.length;
+            }
+        }
+        for(var i = 0; i < result.length; ++i) {
+            if (result[i] !== '') {
+                var reg=new RegExp(separator+"$")
+                if (reg.test(result[i])) {
+                    str_result += (result[i].replace('undefined', '').substring(0, result[i].length - separator.length) + separator)
+                } else {
+                    str_result += (result[i].replace('undefined', '') + separator)
+                }
+            }
+        }
+        if (str_result[str_result.length - 1] === separator) {
+            return str_result.substring(0, str_result.length - separator.length);
+        } else {
+            return str_result
+        }
+    }
+
+    /**
+     * è·å–å­—ç¬¦ä¸²å¯¹åº”æ‹¼éŸ³çš„é¦–å­—æ¯
+     * @param {string} str 
+     */
+    static getShortPinyin(str) {
+        return this.convertToPinyinString(str, '', PinyinFormat.FIRST_LETTER);
+    }
+
+    /**
+     * åˆ¤æ–­ä¸€ä¸ªæ±‰å­—æ˜¯å¦ä¸ºå¤šéŸ³å­—
+     * @param {string/char} c 
+     */
+    static hasMultiPinyin(c) {
+        var pinyin = PINYIN_TABLE[c];
+        if(typeof(c) != 'undefined'){
+            return pinyin.split(',').length > 1
+        }
+        return false;
+    }
+
+    static addPinyinDictResource(res) {
+        PINYIN_TABLE = Object.assign(res, PINYIN_TABLE);
+    }
+
+    static addMutilPinyinDictResource(res) {
+        MUTIL_PINYIN_TABLE = Object.assign(res, MUTIL_PINYIN_TABLE);
+    }
+}
+ÔrE•§version¨mappings¥names§sources®sourcesContentÜ Ú‘”    ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”  	 ‘”  
+ ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”   ‘”    ‘”  ! ‘”  " ‘”  # ‘”  $ ‘”  % ‘”  & ‘”  ' ‘”  ( ‘”  ) ‘”  * ‘”  + ‘”  , ‘”  - ‘”  . ‘”  / ‘”  0 ‘”  1 ‘”  2 ‘”  3 ‘”  4 ‘”  5 ‘”  6 ‘”  7 ‘”  8 ‘”  9 ‘”  : ‘”  ; ‘”  < ‘”  = ‘”  > ‘”  ? ‘”  Ì@ ‘”  ÌA ‘”  ÌB ‘”  ÌC ‘”  ÌD ‘”  ÌE ‘”  ÌF ‘”  ÌG ‘”  ÌH ‘”  ÌI ‘”  ÌJ ‘”  ÌK ‘”  ÌL ‘”  ÌM ‘”  ÌN ‘”  ÌO ‘”  ÌP ‘”  ÌQ ‘”  ÌR ‘”  ÌS ‘”  ÌT ‘”  ÌU ‘”  ÌV ‘”  ÌW ‘”  ÌX ‘”  ÌY ‘”  ÌZ ‘”  Ì[ ‘”  Ì\ ‘”  Ì] ‘”  Ì^ ‘”  Ì_ ‘”  Ì` ‘”  Ìa ‘”  Ìb ‘”  Ìc ‘”  Ìd ‘”  Ìe ‘”  Ìf ‘”  Ìg ‘”  Ìh ‘”  Ìi ‘”  Ìj ‘”  Ìk ‘”  Ìl ‘”  Ìm ‘”  Ìn ‘”  Ìo ‘”  Ìp ‘”  Ìq ‘”  Ìr ‘”  Ìs ‘”  Ìt ‘”  Ìu ‘”  Ìv ‘”  Ìw ‘”  Ìx ‘”  Ìy ‘”  Ìz ‘”  Ì{ ‘”  Ì| ‘”  Ì} ‘”  Ì~ ‘”  Ì ‘”  Ì€ ‘”  Ì ‘”  Ì‚ ‘”  Ìƒ ‘”  Ì„ ‘”  Ì… ‘”  Ì† ‘”  Ì‡ ‘”  Ìˆ ‘”  Ì‰ ‘”  ÌŠ ‘”  Ì‹ ‘”  ÌŒ ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì ‘”  Ì‘ ‘”  Ì’ ‘”  Ì“ ‘”  Ì” ‘”  Ì• ‘”  Ì– ‘”  Ì— ‘”  Ì˜ ‘”  Ì™ ‘”  Ìš ‘”  Ì› ‘”  Ìœ ‘”  Ì ‘”  Ì ‘”  ÌŸ ‘”  Ì  ‘”  Ì¡ ‘”  Ì¢ ‘”  Ì£ ‘”  Ì¤ ‘”  Ì¥ ‘”  Ì¦ ‘”  Ì§ ‘”  Ì¨ ‘”  Ì© ‘”  Ìª ‘”  Ì« ‘”  Ì¬ ‘”  Ì­ ‘”  Ì® ‘”  Ì¯ ‘”  Ì° ‘”  Ì± ‘”  Ì² ‘”  Ì³ ‘”  Ì´ ‘”  Ìµ ‘”  Ì¶ ‘”  Ì· ‘”  Ì¸ ‘”  Ì¹ ‘”  Ìº ‘”  Ì» ‘”  Ì¼ ‘”  Ì½ ‘”  Ì¾ ‘”  Ì¿ ‘”  ÌÀ ‘”  ÌÁ ‘”  ÌÂ ‘”  ÌÃ ‘”  ÌÄ ‘”  ÌÅ ‘”  ÌÆ ‘”  ÌÇ ‘”  ÌÈ ‘”  ÌÉ ‘”  ÌÊ ‘”  ÌË ‘”  ÌÌ ‘”  ÌÍ ‘”  ÌÎ ‘”  ÌÏ ‘”  ÌĞ ‘”  ÌÑ ‘”  ÌÒ ‘”  ÌÓ ‘”  ÌÔ ‘”  ÌÕ ‘”  ÌÖ ‘”  Ì× ‘”  ÌØ ‘Ù—C:\Users\Lenovo\Desktop\class\MAID\MyApp3\oh_modules\.ohpm\@ohos+pinyin4js@2.0.0\oh_modules\@ohos\pinyin4js\src\main\ets\components\src\PinyinHelper.js‘Ú ¹/**
+ * æ±‰å­—è½¬æ‹¼éŸ³
+ * 
+ * @auth superbiger(superbiger@qq.com)
+ */
+import { PinyinResource } from "./PinyinResource.js"
+import { ChineseHelper } from "./ChineseHelper.js"
+
+export var PinyinFormat = {
+    WITH_TONE_MARK      :"WITH_TONE_MARK",   //å¸¦å£°è°ƒ
+    WITHOUT_TONE        :"WITHOUT_TONE",     //ä¸å¸¦å£°è°ƒ
+    WITH_TONE_NUMBER    :"WITH_TONE_NUMBER", //æ•°å­—ä»£è¡¨å£°è°ƒ
+    FIRST_LETTER        :"FIRST_LETTER"      //é¦–å­—æ¯é£æ ¼
+}
+
+var PINYIN_TABLE = PinyinResource.getPinyinResource();  //å•å­—å­—å…¸
+var MUTIL_PINYIN_TABLE = PinyinResource.getMutilPinyinResource();  //è¯ç»„å­—å…¸
+var PINYIN_SEPARATOR = ","; //æ‹¼éŸ³åˆ†éš”ç¬¦
+var CHINESE_LING = 'ã€‡';
+var ALL_UNMARKED_VOWEL = "aeiouv";
+var ALL_MARKED_VOWEL = "ÄÃ¡ÇÃ Ä“Ã©Ä›Ã¨Ä«Ã­ÇÃ¬ÅÃ³Ç’Ã²Å«ÃºÇ”Ã¹Ç–Ç˜ÇšÇœ"; //æ‰€æœ‰å¸¦å£°è°ƒçš„æ‹¼éŸ³å­—æ¯
+
+export class PinyinHelper {
+    /**
+     * å°†å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³è½¬æ¢ä¸ºæ•°å­—ä»£è¡¨å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     */
+    static _convertWithToneNumber(str) {
+        var pinyinArray = str.split(PINYIN_SEPARATOR);
+        
+        for(var i=pinyinArray.length -1; i >=0; i--) {
+            var hasMarkedChar = false;
+            var originalPinyin = pinyinArray[i].replace("Ã¼", "v");
+            
+            for(var j=originalPinyin.length - 1; j >= 0; j--) {
+                var originalChar = originalPinyin.charAt(j);
+                if(originalChar < 'a' || originalChar > 'z') {
+                    var indexInAllMarked = ALL_MARKED_VOWEL.indexOf(originalChar);
+                    var toneNumber = indexInAllMarked % 4 + 1;
+                    var replaceChar = ALL_UNMARKED_VOWEL.charAt((indexInAllMarked - indexInAllMarked % 4) / 4);
+                    
+                    pinyinArray[i] = originalPinyin.replace(originalChar, replaceChar) + toneNumber;
+                    hasMarkedChar = true;
+                    break;
+                }
+            }
+            if(!hasMarkedChar) {
+                // æ‰¾ä¸åˆ°å¸¦å£°è°ƒçš„æ‹¼éŸ³å­—æ¯è¯´æ˜æ˜¯è½»å£°ï¼Œç”¨æ•°å­—5è¡¨ç¤º
+                pinyinArray[i] = originalPinyin + "5";
+            }
+        }
+        return pinyinArray;
+    }
+
+    /**
+     * å°†å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³è½¬æ¢ä¸ºä¸å¸¦å£°è°ƒæ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     */
+    static _convertWithoutTone(str) {
+        var pinyinArray;
+        for(var i = ALL_MARKED_VOWEL.length - 1; i >= 0; i--) {
+            var originalChar = ALL_MARKED_VOWEL.charAt(i);
+            var replaceChar = ALL_UNMARKED_VOWEL.charAt((i - i % 4) / 4);
+            str = str.replace(new RegExp(originalChar,"gm"), replaceChar);
+        }
+        pinyinArray = str.replace("Ã¼", "v").split(PINYIN_SEPARATOR);
+        return pinyinArray;
+    }
+
+    /**
+     * å°†å¸¦å£°è°ƒçš„æ‹¼éŸ³æ ¼å¼åŒ–ä¸ºç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * @param {string/char} str 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static _formatPinyin(str, format) {
+        if (format == PinyinFormat.WITH_TONE_MARK) {
+			return str.split(PINYIN_SEPARATOR);
+		} else if (format == PinyinFormat.WITH_TONE_NUMBER) {
+			return this._convertWithToneNumber(str);
+		} else if (format == PinyinFormat.WITHOUT_TONE) {
+			return this._convertWithoutTone(str);
+		} else if (format == PinyinFormat.FIRST_LETTER) {
+            return this._convertWithoutTone(str);
+        }
+		return [];
+    }
+
+    /**
+     * å°†å•ä¸ªæ±‰å­—è½¬æ¢ä¸ºç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * 
+     * @param {string/char} c 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static _convertToPinyinArray(c, format) {
+        var pinyin = PINYIN_TABLE[c];
+        if(typeof(pinyin) != "undefined") {
+            var arr = [];
+            var pinyinArray = this._formatPinyin(pinyin, format);
+            for(var i = 0; i < pinyinArray.length; i++){
+                arr.push(pinyinArray[i]);
+            }
+            return arr;
+        }
+        return [];
+    }
+
+    /**
+     * è·å–ç»™å®šå­—ç¬¦ä¸²æ˜¯å¦åœ¨å­—å…¸ä¸­æ‰¾åˆ°è¯ç»„æ‹¼éŸ³å¯¹åº”å…³ç³»
+     * 
+     * ç®€åŒ–æ“ä½œ æš‚æ—¶åªæ”¯æŒ6å­—ä»¥å†…å­—å…¸æ£€æµ‹
+     * @param {string} str 
+     */
+    static _getWords(str) {
+        for(var i = 1; i < 6; i++) {
+            var temp = MUTIL_PINYIN_TABLE[str.substring(0, i)];
+            if(typeof(temp) != 'undefined'){
+                return [str.substring(0, i)];
+            }
+        }
+        return [];
+    }
+
+    /**
+     * å°†å­—ç¬¦ä¸²è½¬æ¢æˆç›¸åº”æ ¼å¼çš„æ‹¼éŸ³
+     * @param {string} str 
+     * @param {string} separator 
+     * @param {PinyinFormat} format æ‹¼éŸ³æ ¼å¼ï¼šWITH_TONE_NUMBER--æ•°å­—ä»£è¡¨å£°è°ƒï¼ŒWITHOUT_TONE--ä¸å¸¦å£°è°ƒï¼ŒWITH_TONE_MARK--å¸¦å£°è°ƒ
+     */
+    static convertToPinyinString(str, separator, format) {
+        var result = ['']
+        var pos = 0
+        str = ChineseHelper.convertToSimplifiedChinese(str);
+        var i = 0;
+        var strLen = str.length;
+        var str_result = '';
+        while(i < strLen) {
+            var subStr = str.substring(i);
+            var commonPrefixList = this._getWords(subStr); //è¯ç»„å­—å…¸æœ‰çš„æƒ…å†µè¿”å›è¯¥èµ·ç‚¹ä¸‹åˆ†è¯æ•°ç»„ï¼Œæ²¡æœ‰çš„æƒ…å†µè¿”å›ç©ºæ•°ç»„
+            if(commonPrefixList.length == 0) { //ä¸æ˜¯è¯ç»„
+                var c = str.charAt(i);
+                if(ChineseHelper.isChinese(c) || c == CHINESE_LING) {
+                    var pinyinArray = this._convertToPinyinArray(c, format);
+                    if(pinyinArray.length > 0) {
+                        if(format == PinyinFormat.FIRST_LETTER){
+                            pos++
+                            result[pos] = (pinyinArray[0].charAt(0))
+                        }else{
+                            pos++
+                            result[pos] = (pinyinArray[0]) + separator
+                        }
+                    }else{
+                        result[pos] += str.charAt(i)
+                    }
+                } else {
+                    result[pos] += str.charAt(i)
+                }
+                i++;
+            } else { //æ˜¯è¯ç»„
+                var words = commonPrefixList[commonPrefixList.length - 1];
+                var pinyinArray = this._formatPinyin(MUTIL_PINYIN_TABLE[words], format);
+                for(let j=0, l = pinyinArray.length; j < l; j++) {
+                    if(format == PinyinFormat.FIRST_LETTER){
+                        pos++
+                        result[pos] = (pinyinArray[j].charAt(0))
+                    }else{
+                        pos++
+                        result[pos] = (pinyinArray[j]) + separator
+                    }
+                }
+                i += words.length;
+            }
+        }
+        for(var i = 0; i < result.length; ++i) {
+            if (result[i] !== '') {
+                var reg=new RegExp(separator+"$")
+                if (reg.test(result[i])) {
+                    str_result += (result[i].replace('undefined', '').substring(0, result[i].length - separator.length) + separator)
+                } else {
+                    str_result += (result[i].replace('undefined', '') + separator)
+                }
+            }
+        }
+        if (str_result[str_result.length - 1] === separator) {
+            return str_result.substring(0, str_result.length - separator.length);
+        } else {
+            return str_result
+        }
+    }
+
+    /**
+     * è·å–å­—ç¬¦ä¸²å¯¹åº”æ‹¼éŸ³çš„é¦–å­—æ¯
+     * @param {string} str 
+     */
+    static getShortPinyin(str) {
+        return this.convertToPinyinString(str, '', PinyinFormat.FIRST_LETTER);
+    }
+
+    /**
+     * åˆ¤æ–­ä¸€ä¸ªæ±‰å­—æ˜¯å¦ä¸ºå¤šéŸ³å­—
+     * @param {string/char} c 
+     */
+    static hasMultiPinyin(c) {
+        var pinyin = PINYIN_TABLE[c];
+        if(typeof(c) != 'undefined'){
+            return pinyin.split(',').length > 1
+        }
+        return false;
+    }
+
+    static addPinyinDictResource(res) {
+        PINYIN_TABLE = Object.assign(res, PINYIN_TABLE);
+    }
+
+    static addMutilPinyinDictResource(res) {
+        MUTIL_PINYIN_TABLE = Object.assign(res, MUTIL_PINYIN_TABLE);
+    }
+}
+ÔrF’²./ChineseHelper.js³./PinyinResource.jsÔrG—ªassertions¨external¢id¤meta±moduleSideEffectsªresolvedByµsyntheticNamedExportsAÂÙ˜C:\Users\Lenovo\Desktop\class\MAID\MyApp3\oh_modules\.ohpm\@ohos+pinyin4js@2.0.0\oh_modules\@ohos\pinyin4js\src\main\ets\components\src\ChineseHelper.jsAÃªoh-resolveÂGAÂÙ™C:\Users\Lenovo\Desktop\class\MAID\MyApp3\oh_modules\.ohpm\@ohos+pinyin4js@2.0.0\oh_modules\@ohos\pinyin4js\src\main\ets\components\src\PinyinResource.jsAÃªoh-resolveÂÂÔ  ÔrH”²dynamicImportCache¹exportAllDeclarationCache»exportNamedDeclarationCache«importCache’ÔrI–¤type¥start£end«declarationªspecifiers¦source¶ExportNamedDeclarationÌ­Í¡ÔrJ•¤type¥start£end¬declarations¤kind³VariableDeclarationÌ´Í¡‘ÔrK•¤type¥start£end¢id¤init²VariableDeclaratorÌ¸Í¡ÔrL”¤type¥start£end¤nameªIdentifierÌ¸ÌÄ¬PinyinFormatÔrM”¤type¥start£endªproperties°ObjectExpressionÌÇÍ¡”ÔrN™¤type¥start£end¦method©shorthand¨computed£key¥value¤kind¨PropertyÌÎÌóÂÂÂLªIdentifierÌÎÌÜ®WITH_TONE_MARKÔrO•¤type¥start£end¥value£raw§LiteralÌãÌó®WITH_TONE_MARK°"WITH_TONE_MARK"¤initN¨PropertyÍÍ%ÂÂÂLªIdentifierÍÍ¬WITHOUT_TONEO§LiteralÍÍ%¬WITHOUT_TONE®"WITHOUT_TONE"¤initN¨PropertyÍ7Í^ÂÂÂLªIdentifierÍ7ÍG°WITH_TONE_NUMBERO§LiteralÍLÍ^°WITH_TONE_NUMBER²"WITH_TONE_NUMBER"¤initN¨PropertyÍnÍ‘ÂÂÂLªIdentifierÍnÍz¬FIRST_LETTERO§LiteralÍƒÍ‘¬FIRST_LETTER®"FIRST_LETTER"¤init£varÀI¶ExportNamedDeclarationÍÕÍÔrP–¤type¥start£end¢idªsuperClass¤body°ClassDeclarationÍÜÍLªIdentifierÍâÍî¬PinyinHelperÀÔrQ”¤type¥start£end¤body©ClassBodyÍïÍšÔrR˜¤type¥start£end¦static¨computed£key¤kind¥value°MethodDefinitionÍJÍÏÃÂLªIdentifierÍQÍg¶_convertWithToneNumber¦methodÔrS™¤type¥start£end¢idªexpression©generator¥async¦params¤body²FunctionExpressionÍgÍÏÀÂÂÂ‘LªIdentifierÍhÍk£strQ®BlockStatementÍmÍÏ“J³VariableDeclarationÍxÍ¦‘K²VariableDeclaratorÍ|Í¥LªIdentifierÍ|Í‡«pinyinArrayÔrT–¤type¥start£end¦callee©arguments¨optional®CallExpressionÍŠÍ¥ÔrU—¤type¥start£end¦object¨property¨computed¨optional°MemberExpressionÍŠÍ“LªIdentifierÍŠÍ£strLªIdentifierÍÍ“¥splitÂÂ‘LªIdentifierÍ”Í¤°PINYIN_SEPARATORÂ£varÔrV—¤type¥start£end¤init¤test¦update¤body¬ForStatementÍºÍ«J³VariableDeclarationÍ¾ÍÙ‘K²VariableDeclaratorÍÂÍÙLªIdentifierÍÂÍÃ¡iÔrW–¤type¥start£end¤left¨operator¥right°BinaryExpressionÍÄÍÙU°MemberExpressionÍÄÍÖLªIdentifierÍÄÍÏ«pinyinArrayLªIdentifierÍĞÍÖ¦lengthÂÂ¡-O§LiteralÍØÍÙ¡1£varW°BinaryExpressionÍÛÍàLªIdentifierÍÛÍÜ¡i¢>=O§LiteralÍßÍà ¡0ÔrX–¤type¥start£end¨operator¦prefix¨argument°UpdateExpressionÍâÍå¢--ÂLªIdentifierÍâÍã¡iQ®BlockStatementÍçÍ«”J³VariableDeclarationÍöÍ‘K²VariableDeclaratorÍúÍLªIdentifierÍúÍ­hasMarkedCharO§LiteralÍ
+ÍÂ¥false£varJ³VariableDeclarationÍÍT‘K²VariableDeclaratorÍ"ÍSLªIdentifierÍ"Í0®originalPinyinT®CallExpressionÍ3ÍSU°MemberExpressionÍ3ÍIU°MemberExpressionÍ3ÍALªIdentifierÍ3Í>«pinyinArrayLªIdentifierÍ?Í@¡iÃÂLªIdentifierÍBÍI§replaceÂÂ’O§LiteralÍJÍM¢Ã¼¤"Ã¼"O§LiteralÍOÍR¡v£"v"Â£varV¬ForStatementÍpÍJ³VariableDeclarationÍtÍ“‘K²VariableDeclaratorÍxÍ“LªIdentifierÍxÍy¡jW°BinaryExpressionÍzÍ“U°MemberExpressionÍzÍLªIdentifierÍzÍˆ®originalPinyinLªIdentifierÍ‰Í¦lengthÂÂ¡-O§LiteralÍ’Í“¡1£varW°BinaryExpressionÍ•Í›LªIdentifierÍ•Í–¡j¢>=O§LiteralÍšÍ› ¡0X°UpdateExpressionÍÍ ¢--ÂLªIdentifierÍÍ¡jQ®BlockStatementÍ¢Í’J³VariableDeclarationÍµÍá‘K²VariableDeclaratorÍ¹ÍàLªIdentifierÍ¹ÍÅ¬originalCharT®CallExpressionÍÈÍàU°MemberExpressionÍÈÍİLªIdentifierÍÈÍÖ®originalPinyinLªIdentifierÍ×Íİ¦charAtÂÂ‘LªIdentifierÍŞÍß¡jÂ£varÔrY–¤type¥start£end¤testªconsequent©alternate«IfStatementÍóÍüW±LogicalExpressionÍöÍW°BinaryExpressionÍöÍLªIdentifierÍöÍ¬originalChar¡<O§LiteralÍÍ¡a£'a'¢||W°BinaryExpressionÍÍLªIdentifierÍÍ¬originalChar¡>O§LiteralÍÍ¡z£'z'Q®BlockStatementÍ Íü–J³VariableDeclarationÍ7Íu‘K²VariableDeclaratorÍ;ÍtLªIdentifierÍ;ÍK°indexInAllMarkedT®CallExpressionÍNÍtU°MemberExpressionÍNÍfLªIdentifierÍNÍ^°ALL_MARKED_VOWELLªIdentifierÍ_Íf§indexOfÂÂ‘LªIdentifierÍgÍs¬originalCharÂ£varJ³VariableDeclarationÍ‹Íµ‘K²VariableDeclaratorÍÍ´LªIdentifierÍÍ™ªtoneNumberW°BinaryExpressionÍœÍ´W°BinaryExpressionÍœÍ°LªIdentifierÍœÍ¬°indexInAllMarked¡%O§LiteralÍ¯Í°¡4¡+O§LiteralÍ³Í´¡1£varJ³VariableDeclarationÍËÍ&‘K²VariableDeclaratorÍÏÍ%LªIdentifierÍÏÍÚ«replaceCharT®CallExpressionÍİÍ%U°MemberExpressionÍİÍöLªIdentifierÍİÍï²ALL_UNMARKED_VOWELLªIdentifierÍğÍö¦charAtÂÂ‘W°BinaryExpressionÍ÷Í$W°BinaryExpressionÍøÍLªIdentifierÍøÍ°indexInAllMarked¡-W°BinaryExpressionÍÍLªIdentifierÍÍ°indexInAllMarked¡%O§LiteralÍÍ¡4¡/O§LiteralÍ#Í$¡4Â£varÔrZ”¤type¥start£endªexpression³ExpressionStatementÍRÍ¢Ôr[–¤type¥start£end¨operator¤left¥right´AssignmentExpressionÍRÍ¡¡=U°MemberExpressionÍRÍ`LªIdentifierÍRÍ]«pinyinArrayLªIdentifierÍ^Í_¡iÃÂW°BinaryExpressionÍcÍ¡T®CallExpressionÍcÍ”U°MemberExpressionÍcÍyLªIdentifierÍcÍq®originalPinyinLªIdentifierÍrÍy§replaceÂÂ’LªIdentifierÍzÍ†¬originalCharLªIdentifierÍˆÍ“«replaceCharÂ¡+LªIdentifierÍ—Í¡ªtoneNumberZ³ExpressionStatementÍ¸ÍÍ[´AssignmentExpressionÍ¸ÍÌ¡=LªIdentifierÍ¸ÍÅ­hasMarkedCharO§LiteralÍÈÍÌÃ¤trueÔr\”¤type¥start£end¥label®BreakStatementÍãÍéÀÀY«IfStatementÍÍ X¯UnaryExpressionÍÍ*¡!ÃLªIdentifierÍÍ*­hasMarkedCharQ®BlockStatementÍ,Í ‘Z³ExpressionStatementÍkÍ‘[´AssignmentExpressionÍkÍ¡=U°MemberExpressionÍkÍyLªIdentifierÍkÍv«pinyinArrayLªIdentifierÍwÍx¡iÃÂW°BinaryExpressionÍ|ÍLªIdentifierÍ|ÍŠ®originalPinyin¡+O§LiteralÍÍ¡5£"5"ÀÔr]”¤type¥start£end¨argument¯ReturnStatementÍµÍÈLªIdentifierÍ¼ÍÇ«pinyinArrayR°MethodDefinitionÍ)Í	íÃÂLªIdentifierÍ0ÍC³_convertWithoutTone¦methodS²FunctionExpressionÍCÍ	íÀÂÂÂ‘LªIdentifierÍDÍG£strQ®BlockStatementÍIÍ	í”J³VariableDeclarationÍTÍd‘K²VariableDeclaratorÍXÍcLªIdentifierÍXÍc«pinyinArrayÀ£varV¬ForStatementÍnÍ	ƒJ³VariableDeclarationÍrÍ•‘K²VariableDeclaratorÍvÍ•LªIdentifierÍvÍw¡iW°BinaryExpressionÍzÍ•U°MemberExpressionÍzÍ‘LªIdentifierÍzÍŠ°ALL_MARKED_VOWELLªIdentifierÍ‹Í‘¦lengthÂÂ¡-O§LiteralÍ”Í•¡1£varW°BinaryExpressionÍ—ÍLªIdentifierÍ—Í˜¡i¢>=O§LiteralÍœÍ ¡0X°UpdateExpressionÍŸÍ¢¢--ÂLªIdentifierÍŸÍ ¡iQ®BlockStatementÍ¤Í	ƒ“J³VariableDeclarationÍ³Íá‘K²VariableDeclaratorÍ·ÍàLªIdentifierÍ·ÍÃ¬originalCharT®CallExpressionÍÆÍàU°MemberExpressionÍÆÍİLªIdentifierÍÆÍÖ°ALL_MARKED_VOWELLªIdentifierÍ×Íİ¦charAtÂÂ‘LªIdentifierÍŞÍß¡iÂ£varJ³VariableDeclarationÍïÍ	,‘K²VariableDeclaratorÍóÍ	+LªIdentifierÍóÍş«replaceCharT®CallExpressionÍ	Í	+U°MemberExpressionÍ	Í	LªIdentifierÍ	Í	²ALL_UNMARKED_VOWELLªIdentifierÍ	Í	¦charAtÂÂ‘W°BinaryExpressionÍ	Í	*W°BinaryExpressionÍ	Í	%LªIdentifierÍ	Í	¡i¡-W°BinaryExpressionÍ	 Í	%LªIdentifierÍ	 Í	!¡i¡%O§LiteralÍ	$Í	%¡4¡/O§LiteralÍ	)Í	*¡4Â£varZ³ExpressionStatementÍ	:Í	x[´AssignmentExpressionÍ	:Í	w¡=LªIdentifierÍ	:Í	=£strT®CallExpressionÍ	@Í	wU°MemberExpressionÍ	@Í	KLªIdentifierÍ	@Í	C£strLªIdentifierÍ	DÍ	K§replaceÂÂ’Ôr^•¤type¥start£end¦callee©arguments­NewExpressionÍ	LÍ	iLªIdentifierÍ	PÍ	V¦RegExp’LªIdentifierÍ	WÍ	c¬originalCharO§LiteralÍ	dÍ	h¢gm¤"gm"LªIdentifierÍ	kÍ	v«replaceCharÂZ³ExpressionStatementÍ	Í	É[´AssignmentExpressionÍ	Í	È¡=LªIdentifierÍ	Í	˜«pinyinArrayT®CallExpressionÍ	›Í	ÈU°MemberExpressionÍ	›Í	¶T®CallExpressionÍ	›Í	°U°MemberExpressionÍ	›Í	¦LªIdentifierÍ	›Í	£strLªIdentifierÍ	ŸÍ	¦§replaceÂÂ’O§LiteralÍ	§Í	ª¢Ã¼¤"Ã¼"O§LiteralÍ	¬Í	¯¡v£"v"ÂLªIdentifierÍ	±Í	¶¥splitÂÂ‘LªIdentifierÍ	·Í	Ç°PINYIN_SEPARATORÂ]¯ReturnStatementÍ	ÓÍ	æLªIdentifierÍ	ÚÍ	å«pinyinArrayR°MethodDefinitionÍ
+®Í|ÃÂLªIdentifierÍ
+µÍ
+Â­_formatPinyin¦methodS²FunctionExpressionÍ
+ÂÍ|ÀÂÂÂ’LªIdentifierÍ
+ÃÍ
+Æ£strLªIdentifierÍ
+ÈÍ
+Î¦formatQ®BlockStatementÍ
+ĞÍ|’Y«IfStatementÍ
+ÛÍgW°BinaryExpressionÍ
+ßÍLªIdentifierÍ
+ßÍ
+å¦format¢==U°MemberExpressionÍ
+éÍLªIdentifierÍ
+éÍ
+õ¬PinyinFormatLªIdentifierÍ
+öÍ®WITH_TONE_MARKÂÂQ®BlockStatementÍÍ4‘]¯ReturnStatementÍÍ/T®CallExpressionÍÍ.U°MemberExpressionÍÍLªIdentifierÍÍ£strLªIdentifierÍÍ¥splitÂÂ‘LªIdentifierÍÍ-°PINYIN_SEPARATORÂY«IfStatementÍ:ÍgW°BinaryExpressionÍ>ÍeLªIdentifierÍ>ÍD¦format¢==U°MemberExpressionÍHÍeLªIdentifierÍHÍT¬PinyinFormatLªIdentifierÍUÍe°WITH_TONE_NUMBERÂÂQ®BlockStatementÍgÍš‘]¯ReturnStatementÍmÍ•T®CallExpressionÍtÍ”U°MemberExpressionÍtÍÔr_“¤type¥start£end®ThisExpressionÍtÍxLªIdentifierÍyÍ¶_convertWithToneNumberÂÂ‘LªIdentifierÍÍ“£strÂY«IfStatementÍ ÍgW°BinaryExpressionÍ¤ÍÇLªIdentifierÍ¤Íª¦format¢==U°MemberExpressionÍ®ÍÇLªIdentifierÍ®Íº¬PinyinFormatLªIdentifierÍ»ÍÇ¬WITHOUT_TONEÂÂQ®BlockStatementÍÉÍù‘]¯ReturnStatementÍÏÍôT®CallExpressionÍÖÍóU°MemberExpressionÍÖÍî_®ThisExpressionÍÖÍÚLªIdentifierÍÛÍî³_convertWithoutToneÂÂ‘LªIdentifierÍïÍò£strÂY«IfStatementÍÿÍgW°BinaryExpressionÍÍ&LªIdentifierÍÍ	¦format¢==U°MemberExpressionÍÍ&LªIdentifierÍÍ¬PinyinFormatLªIdentifierÍÍ&¬FIRST_LETTERÂÂQ®BlockStatementÍ(Íg‘]¯ReturnStatementÍ7Í\T®CallExpressionÍ>Í[U°MemberExpressionÍ>ÍV_®ThisExpressionÍ>ÍBLªIdentifierÍCÍV³_convertWithoutToneÂÂ‘LªIdentifierÍWÍZ£strÂÀ]¯ReturnStatementÍkÍuÔr`”¤type¥start£end¨elements¯ArrayExpressionÍrÍtR°MethodDefinitionÍAÍÏÃÂLªIdentifierÍHÍ]µ_convertToPinyinArray¦methodS²FunctionExpressionÍ]ÍÏÀÂÂÂ’LªIdentifierÍ^Í_¡cLªIdentifierÍaÍg¦formatQ®BlockStatementÍiÍÏ“J³VariableDeclarationÍtÍ‘‘K²VariableDeclaratorÍxÍLªIdentifierÍxÍ~¦pinyinU°MemberExpressionÍÍLªIdentifierÍÍ¬PINYIN_TABLELªIdentifierÍÍ¡cÃÂ£varY«IfStatementÍ›Í´W°BinaryExpressionÍÍ»X¯UnaryExpressionÍÍ¬¦typeofÃLªIdentifierÍ¥Í«¦pinyin¢!=O§LiteralÍ°Í»©undefined«"undefined"Q®BlockStatementÍ½Í´”J³VariableDeclarationÍÌÍÙ‘K²VariableDeclaratorÍĞÍØLªIdentifierÍĞÍÓ£arr`¯ArrayExpressionÍÖÍØ£varJ³VariableDeclarationÍçÍ‘K²VariableDeclaratorÍëÍLªIdentifierÍëÍö«pinyinArrayT®CallExpressionÍùÍU°MemberExpressionÍùÍ_®ThisExpressionÍùÍıLªIdentifierÍşÍ­_formatPinyinÂÂ’LªIdentifierÍÍ¦pinyinLªIdentifierÍÍ¦formatÂ£varV¬ForStatementÍ*ÍJ³VariableDeclarationÍ.Í7‘K²VariableDeclaratorÍ2Í7LªIdentifierÍ2Í3¡iO§LiteralÍ6Í7 ¡0£varW°BinaryExpressionÍ9ÍOLªIdentifierÍ9Í:¡i¡<U°MemberExpressionÍ=ÍOLªIdentifierÍ=ÍH«pinyinArrayLªIdentifierÍIÍO¦lengthÂÂX°UpdateExpressionÍQÍT¢++ÂLªIdentifierÍQÍR¡iQ®BlockStatementÍUÍ‘Z³ExpressionStatementÍhÍT®CallExpressionÍhÍ€U°MemberExpressionÍhÍpLªIdentifierÍhÍk£arrLªIdentifierÍlÍp¤pushÂÂ‘U°MemberExpressionÍqÍLªIdentifierÍqÍ|«pinyinArrayLªIdentifierÍ}Í~¡iÃÂÂ]¯ReturnStatementÍÍ©LªIdentifierÍ¥Í¨£arrÀ]¯ReturnStatementÍ¾ÍÈ`¯ArrayExpressionÍÅÍÇR°MethodDefinitionÍJÍZÃÂLªIdentifierÍQÍZ©_getWords¦methodS²FunctionExpressionÍZÍZÀÂÂÂ‘LªIdentifierÍ[Í^£strQ®BlockStatementÍ`ÍZ’V¬ForStatementÍkÍ?J³VariableDeclarationÍoÍx‘K²VariableDeclaratorÍsÍxLªIdentifierÍsÍt¡iO§LiteralÍwÍx¡1£varW°BinaryExpressionÍzÍLªIdentifierÍzÍ{¡i¡<O§LiteralÍ~Í¡6X°UpdateExpressionÍÍ„¢++ÂLªIdentifierÍÍ‚¡iQ®BlockStatementÍ†Í?’J³VariableDeclarationÍ•ÍÈ‘K²VariableDeclaratorÍ™ÍÇLªIdentifierÍ™Í¤tempU°MemberExpressionÍ ÍÇLªIdentifierÍ Í²²MUTIL_PINYIN_TABLET®CallExpressionÍ³ÍÆU°MemberExpressionÍ³ÍÀLªIdentifierÍ³Í¶£strLªIdentifierÍ·ÍÀ©substringÂÂ’O§LiteralÍÁÍÂ ¡0LªIdentifierÍÄÍÅ¡iÂÃÂ£varY«IfStatementÍÖÍ4W°BinaryExpressionÍÙÍôX¯UnaryExpressionÍÙÍå¦typeofÃLªIdentifierÍàÍä¤temp¢!=O§LiteralÍéÍô©undefined«'undefined'Q®BlockStatementÍõÍ4‘]¯ReturnStatementÍÍ%`¯ArrayExpressionÍÍ$‘T®CallExpressionÍÍ#U°MemberExpressionÍÍLªIdentifierÍÍ£strLªIdentifierÍÍ©substringÂÂ’O§LiteralÍÍ ¡0LªIdentifierÍ!Í"¡iÂÀ]¯ReturnStatementÍIÍS`¯ArrayExpressionÍPÍRR°MethodDefinitionÍ5Í`ÃÂLªIdentifierÍ<ÍQµconvertToPinyinString¦methodS²FunctionExpressionÍQÍ`ÀÂÂÂ“LªIdentifierÍRÍU£strLªIdentifierÍWÍ`©separatorLªIdentifierÍbÍh¦formatQ®BlockStatementÍjÍ`™J³VariableDeclarationÍuÍ†‘K²VariableDeclaratorÍyÍ†LªIdentifierÍyÍ¦result`¯ArrayExpressionÍ‚Í†‘O§LiteralÍƒÍ… ¢''£varJ³VariableDeclarationÍÍ›‘K²VariableDeclaratorÍ”Í›LªIdentifierÍ”Í—£posO§LiteralÍšÍ› ¡0£varZ³ExpressionStatementÍ¥ÍÙ[´AssignmentExpressionÍ¥ÍØ¡=LªIdentifierÍ¥Í¨£strT®CallExpressionÍ«ÍØU°MemberExpressionÍ«ÍÓLªIdentifierÍ«Í¸­ChineseHelperLªIdentifierÍ¹ÍÓºconvertToSimplifiedChineseÂÂ‘LªIdentifierÍÔÍ×£strÂJ³VariableDeclarationÍãÍí‘K²VariableDeclaratorÍçÍìLªIdentifierÍçÍè¡iO§LiteralÍëÍì ¡0£varJ³VariableDeclarationÍ÷Í‘K²VariableDeclaratorÍûÍLªIdentifierÍûÍ¦strLenU°MemberExpressionÍÍLªIdentifierÍÍ£strLªIdentifierÍÍ¦lengthÂÂ£varJ³VariableDeclarationÍÍ-‘K²VariableDeclaratorÍÍ,LªIdentifierÍÍ'ªstr_resultO§LiteralÍ*Í, ¢''£varÔra•¤type¥start£end¤test¤body®WhileStatementÍ7Í³W°BinaryExpressionÍ=ÍGLªIdentifierÍ=Í>¡i¡<LªIdentifierÍAÍG¦strLenQ®BlockStatementÍIÍ³“J³VariableDeclarationÍXÍv‘K²VariableDeclaratorÍ\ÍuLªIdentifierÍ\Íb¦subStrT®CallExpressionÍeÍuU°MemberExpressionÍeÍrLªIdentifierÍeÍh£strLªIdentifierÍiÍr©substringÂÂ‘LªIdentifierÍsÍt¡iÂ£varJ³VariableDeclarationÍ„Í²‘K²VariableDeclaratorÍˆÍ±LªIdentifierÍˆÍ˜°commonPrefixListT®CallExpressionÍ›Í±U°MemberExpressionÍ›Í©_®ThisExpressionÍ›ÍŸLªIdentifierÍ Í©©_getWordsÂÂ‘LªIdentifierÍªÍ°¦subStrÂ£varY«IfStatementÍàÍ¨W°BinaryExpressionÍãÍÿU°MemberExpressionÍãÍúLªIdentifierÍãÍó°commonPrefixListLªIdentifierÍôÍú¦lengthÂÂ¢==O§LiteralÍşÍÿ ¡0Q®BlockStatementÍÍ6“J³VariableDeclarationÍÍ1‘K²VariableDeclaratorÍÍ0LªIdentifierÍÍ ¡cT®CallExpressionÍ#Í0U°MemberExpressionÍ#Í-LªIdentifierÍ#Í&£strLªIdentifierÍ'Í-¦charAtÂÂ‘LªIdentifierÍ.Í/¡iÂ£varY«IfStatementÍCÍW±LogicalExpressionÍFÍuT®CallExpressionÍFÍ`U°MemberExpressionÍFÍ]LªIdentifierÍFÍS­ChineseHelperLªIdentifierÍTÍ]©isChineseÂÂ‘LªIdentifierÍ^Í_¡cÂ¢||W°BinaryExpressionÍdÍuLªIdentifierÍdÍe¡c¢==LªIdentifierÍiÍu¬CHINESE_LINGQ®BlockStatementÍwÍÅ’J³VariableDeclarationÍÍÆ‘K²VariableDeclaratorÍ’ÍÅLªIdentifierÍ’Í«pinyinArrayT®CallExpressionÍ ÍÅU°MemberExpressionÍ Íº_®ThisExpressionÍ Í¤LªIdentifierÍ¥Íºµ_convertToPinyinArrayÂÂ’LªIdentifierÍ»Í¼¡cLªIdentifierÍ¾ÍÄ¦formatÂ£varY«IfStatementÍÜÍ²W°BinaryExpressionÍßÍõU°MemberExpressionÍßÍñLªIdentifierÍßÍê«pinyinArrayLªIdentifierÍëÍñ¦lengthÂÂ¡>O§LiteralÍôÍõ ¡0Q®BlockStatementÍ÷Í`‘Y«IfStatementÍÍIW°BinaryExpressionÍÍ8LªIdentifierÍÍ¦format¢==U°MemberExpressionÍÍ8LªIdentifierÍÍ+¬PinyinFormatLªIdentifierÍ,Í8¬FIRST_LETTERÂÂQ®BlockStatementÍ9Í¾’Z³ExpressionStatementÍXÍ]X°UpdateExpressionÍXÍ]¢++ÂLªIdentifierÍXÍ[£posZ³ExpressionStatementÍ{Í£[´AssignmentExpressionÍ{Í£¡=U°MemberExpressionÍ{Í†LªIdentifierÍ{Í¦resultLªIdentifierÍ‚Í…£posÃÂT®CallExpressionÍŠÍ¢U°MemberExpressionÍŠÍŸU°MemberExpressionÍŠÍ˜LªIdentifierÍŠÍ•«pinyinArrayO§LiteralÍ–Í— ¡0ÃÂLªIdentifierÍ™ÍŸ¦charAtÂÂ‘O§LiteralÍ Í¡ ¡0ÂQ®BlockStatementÍÂÍI’Z³ExpressionStatementÍáÍæX°UpdateExpressionÍáÍæ¢++ÂLªIdentifierÍáÍä£posZ³ExpressionStatementÍÍ.[´AssignmentExpressionÍÍ.¡=U°MemberExpressionÍÍLªIdentifierÍÍ
+¦resultLªIdentifierÍÍ£posÃÂW°BinaryExpressionÍÍ.U°MemberExpressionÍÍ!LªIdentifierÍÍ«pinyinArrayO§LiteralÍÍ  ¡0ÃÂ¡+LªIdentifierÍ%Í.©separatorQ®BlockStatementÍdÍ²‘Z³ExpressionStatementÍÍ›[´AssignmentExpressionÍÍ›¢+=U°MemberExpressionÍÍŠLªIdentifierÍÍ…¦resultLªIdentifierÍ†Í‰£posÃÂT®CallExpressionÍÍ›U°MemberExpressionÍÍ˜LªIdentifierÍÍ‘£strLªIdentifierÍ’Í˜¦charAtÂÂ‘LªIdentifierÍ™Íš¡iÂQ®BlockStatementÍËÍ‘Z³ExpressionStatementÍâÍş[´AssignmentExpressionÍâÍş¢+=U°MemberExpressionÍâÍíLªIdentifierÍâÍè¦resultLªIdentifierÍéÍì£posÃÂT®CallExpressionÍñÍşU°MemberExpressionÍñÍûLªIdentifierÍñÍô£strLªIdentifierÍõÍû¦charAtÂÂ‘LªIdentifierÍüÍı¡iÂZ³ExpressionStatementÍ#Í'X°UpdateExpressionÍ#Í&¢++ÂLªIdentifierÍ#Í$¡iQ®BlockStatementÍ<Í¨”J³VariableDeclarationÍUÍ‘K²VariableDeclaratorÍYÍLªIdentifierÍYÍ^¥wordsU°MemberExpressionÍaÍLªIdentifierÍaÍq°commonPrefixListW°BinaryExpressionÍrÍU°MemberExpressionÍrÍ‰LªIdentifierÍrÍ‚°commonPrefixListLªIdentifierÍƒÍ‰¦lengthÂÂ¡-O§LiteralÍŒÍ¡1ÃÂ£varJ³VariableDeclarationÍ¡Íé‘K²VariableDeclaratorÍ¥ÍèLªIdentifierÍ¥Í°«pinyinArrayT®CallExpressionÍ³ÍèU°MemberExpressionÍ³ÍÅ_®ThisExpressionÍ³Í·LªIdentifierÍ¸ÍÅ­_formatPinyinÂÂ’U°MemberExpressionÍÆÍßLªIdentifierÍÆÍØ²MUTIL_PINYIN_TABLELªIdentifierÍÙÍŞ¥wordsÃÂLªIdentifierÍáÍç¦formatÂ£varV¬ForStatementÍûÍuJ³VariableDeclarationÍÿÍ’K²VariableDeclaratorÍÍLªIdentifierÍÍ¡jO§LiteralÍÍ ¡0K²VariableDeclaratorÍÍLªIdentifierÍÍ	¡lU°MemberExpressionÍÍLªIdentifierÍÍ«pinyinArrayLªIdentifierÍÍ¦lengthÂÂ£letW°BinaryExpressionÍ Í%LªIdentifierÍ Í!¡j¡<LªIdentifierÍ$Í%¡lX°UpdateExpressionÍ'Í*¢++ÂLªIdentifierÍ'Í(¡jQ®BlockStatementÍ,Íu‘Y«IfStatementÍCÍbW°BinaryExpressionÍFÍiLªIdentifierÍFÍL¦format¢==U°MemberExpressionÍPÍiLªIdentifierÍPÍ\¬PinyinFormatLªIdentifierÍ]Íi¬FIRST_LETTERÂÂQ®BlockStatementÍjÍã’Z³ExpressionStatementÍ…ÍŠX°UpdateExpressionÍ…ÍŠ¢++ÂLªIdentifierÍ…Íˆ£posZ³ExpressionStatementÍ¤ÍÌ[´AssignmentExpressionÍ¤ÍÌ¡=U°MemberExpressionÍ¤Í¯LªIdentifierÍ¤Íª¦resultLªIdentifierÍ«Í®£posÃÂT®CallExpressionÍ³ÍËU°MemberExpressionÍ³ÍÈU°MemberExpressionÍ³ÍÁLªIdentifierÍ³Í¾«pinyinArrayLªIdentifierÍ¿ÍÀ¡jÃÂLªIdentifierÍÂÍÈ¦charAtÂÂ‘O§LiteralÍÉÍÊ ¡0ÂQ®BlockStatementÍçÍb’Z³ExpressionStatementÍÍX°UpdateExpressionÍÍ¢++ÂLªIdentifierÍÍ£posZ³ExpressionStatementÍ!ÍK[´AssignmentExpressionÍ!ÍK¡=U°MemberExpressionÍ!Í,LªIdentifierÍ!Í'¦resultLªIdentifierÍ(Í+£posÃÂW°BinaryExpressionÍ/ÍKU°MemberExpressionÍ0Í>LªIdentifierÍ0Í;«pinyinArrayLªIdentifierÍ<Í=¡jÃÂ¡+LªIdentifierÍBÍK©separatorZ³ExpressionStatementÍ‡Í™[´AssignmentExpressionÍ‡Í˜¢+=LªIdentifierÍ‡Íˆ¡iU°MemberExpressionÍŒÍ˜LªIdentifierÍŒÍ‘¥wordsLªIdentifierÍ’Í˜¦lengthÂÂV¬ForStatementÍ½ÍŠJ³VariableDeclarationÍÁÍÊ‘K²VariableDeclaratorÍÅÍÊLªIdentifierÍÅÍÆ¡iO§LiteralÍÉÍÊ ¡0£varW°BinaryExpressionÍÌÍİLªIdentifierÍÌÍÍ¡i¡<U°MemberExpressionÍĞÍİLªIdentifierÍĞÍÖ¦resultLªIdentifierÍ×Íİ¦lengthÂÂX°UpdateExpressionÍßÍâ¢++ÃLªIdentifierÍáÍâ¡iQ®BlockStatementÍäÍŠ‘Y«IfStatementÍóÍW°BinaryExpressionÍ÷ÍU°MemberExpressionÍ÷Í LªIdentifierÍ÷Íı¦resultLªIdentifierÍşÍÿ¡iÃÂ£!==O§LiteralÍÍ ¢''Q®BlockStatementÍ	Í’J³VariableDeclarationÍÍ=‘K²VariableDeclaratorÍ Í=LªIdentifierÍ Í#£reg^­NewExpressionÍ$Í=LªIdentifierÍ(Í.¦RegExp‘W°BinaryExpressionÍ/Í<LªIdentifierÍ/Í8©separator¡+O§LiteralÍ9Í<¡$£"$"£varY«IfStatementÍOÍpT®CallExpressionÍSÍfU°MemberExpressionÍSÍ[LªIdentifierÍSÍV£regLªIdentifierÍWÍ[¤testÂÂ‘U°MemberExpressionÍ\ÍeLªIdentifierÍ\Íb¦resultLªIdentifierÍcÍd¡iÃÂÂQ®BlockStatementÍhÍ‘Z³ExpressionStatementÍÍï[´AssignmentExpressionÍÍï¢+=LªIdentifierÍÍ‰ªstr_resultW°BinaryExpressionÍÍîT®CallExpressionÍÍâU°MemberExpressionÍÍºT®CallExpressionÍÍ°U°MemberExpressionÍÍŸU°MemberExpressionÍÍ—LªIdentifierÍÍ”¦resultLªIdentifierÍ•Í–¡iÃÂLªIdentifierÍ˜ÍŸ§replaceÂÂ’O§LiteralÍ Í«©undefined«'undefined'O§LiteralÍ­Í¯ ¢''ÂLªIdentifierÍ±Íº©substringÂÂ’O§LiteralÍ»Í¼ ¡0W°BinaryExpressionÍ¾ÍáU°MemberExpressionÍ¾ÍÎU°MemberExpressionÍ¾ÍÇLªIdentifierÍ¾ÍÄ¦resultLªIdentifierÍÅÍÆ¡iÃÂLªIdentifierÍÈÍÎ¦lengthÂÂ¡-U°MemberExpressionÍÑÍáLªIdentifierÍÑÍÚ©separatorLªIdentifierÍÛÍá¦lengthÂÂÂ¡+LªIdentifierÍåÍî©separatorQ®BlockStatementÍÍp‘Z³ExpressionStatementÍÍ][´AssignmentExpressionÍÍ]¢+=LªIdentifierÍÍ)ªstr_resultW°BinaryExpressionÍ.Í\T®CallExpressionÍ.ÍPU°MemberExpressionÍ.Í?U°MemberExpressionÍ.Í7LªIdentifierÍ.Í4¦resultLªIdentifierÍ5Í6¡iÃÂLªIdentifierÍ8Í?§replaceÂÂ’O§LiteralÍ@ÍK©undefined«'undefined'O§LiteralÍMÍO ¢''Â¡+LªIdentifierÍSÍ\©separatorÀY«IfStatementÍ”ÍYW°BinaryExpressionÍ˜ÍÇU°MemberExpressionÍ˜Í¹LªIdentifierÍ˜Í¢ªstr_resultW°BinaryExpressionÍ£Í¸U°MemberExpressionÍ£Í´LªIdentifierÍ£Í­ªstr_resultLªIdentifierÍ®Í´¦lengthÂÂ¡-O§LiteralÍ·Í¸¡1ÃÂ£===LªIdentifierÍ¾ÍÇ©separatorQ®BlockStatementÍÉÍ(‘]¯ReturnStatementÍØÍT®CallExpressionÍßÍU°MemberExpressionÍßÍóLªIdentifierÍßÍéªstr_resultLªIdentifierÍêÍó©substringÂÂ’O§LiteralÍôÍõ ¡0W°BinaryExpressionÍ÷ÍU°MemberExpressionÍ÷ÍLªIdentifierÍ÷Íªstr_resultLªIdentifierÍÍ¦lengthÂÂ¡-U°MemberExpressionÍÍLªIdentifierÍÍ©separatorLªIdentifierÍÍ¦lengthÂÂÂQ®BlockStatementÍ.ÍY‘]¯ReturnStatementÍ=ÍNLªIdentifierÍDÍNªstr_resultR°MethodDefinitionÍ­Í ÃÂLªIdentifierÍ´ÍÂ®getShortPinyin¦methodS²FunctionExpressionÍÂÍ ÀÂÂÂ‘LªIdentifierÍÃÍÆ£strQ®BlockStatementÍÈÍ ‘]¯ReturnStatementÍÓÍT®CallExpressionÍÚÍU°MemberExpressionÍÚÍô_®ThisExpressionÍÚÍŞLªIdentifierÍßÍôµconvertToPinyinStringÂÂ“LªIdentifierÍõÍø£strO§LiteralÍúÍü ¢''U°MemberExpressionÍşÍLªIdentifierÍşÍ
+¬PinyinFormatLªIdentifierÍÍ¬FIRST_LETTERÂÂÂR°MethodDefinitionÍoÍ1ÃÂLªIdentifierÍvÍ„®hasMultiPinyin¦methodS²FunctionExpressionÍ„Í1ÀÂÂÂ‘LªIdentifierÍ…Í†¡cQ®BlockStatementÍˆÍ1“J³VariableDeclarationÍ“Í°‘K²VariableDeclaratorÍ—Í¯LªIdentifierÍ—Í¦pinyinU°MemberExpressionÍ Í¯LªIdentifierÍ Í¬¬PINYIN_TABLELªIdentifierÍ­Í®¡cÃÂ£varY«IfStatementÍºÍW°BinaryExpressionÍ½ÍÕX¯UnaryExpressionÍ½ÍÆ¦typeofÃLªIdentifierÍÄÍÅ¡c¢!=O§LiteralÍÊÍÕ©undefined«'undefined'Q®BlockStatementÍÖÍ‘]¯ReturnStatementÍåÍW°BinaryExpressionÍìÍU°MemberExpressionÍìÍT®CallExpressionÍìÍıU°MemberExpressionÍìÍøLªIdentifierÍìÍò¦pinyinLªIdentifierÍóÍø¥splitÂÂ‘O§LiteralÍùÍü¡,£','ÂLªIdentifierÍşÍ¦lengthÂÂ¡>O§LiteralÍÍ¡1À]¯ReturnStatementÍÍ*O§LiteralÍ$Í)Â¥falseR°MethodDefinitionÍ9ÍÃÂLªIdentifierÍ@ÍUµaddPinyinDictResource¦methodS²FunctionExpressionÍUÍÀÂÂÂ‘LªIdentifierÍVÍY£resQ®BlockStatementÍ[Í‘Z³ExpressionStatementÍfÍ–[´AssignmentExpressionÍfÍ•¡=LªIdentifierÍfÍr¬PINYIN_TABLET®CallExpressionÍuÍ•U°MemberExpressionÍuÍ‚LªIdentifierÍuÍ{¦ObjectLªIdentifierÍ|Í‚¦assignÂÂ’LªIdentifierÍƒÍ†£resLªIdentifierÍˆÍ”¬PINYIN_TABLEÂR°MethodDefinitionÍ¥ÍÃÂLªIdentifierÍ¬ÍÆºaddMutilPinyinDictResource¦methodS²FunctionExpressionÍÆÍÀÂÂÂ‘LªIdentifierÍÇÍÊ£resQ®BlockStatementÍÌÍ‘Z³ExpressionStatementÍ×Í[´AssignmentExpressionÍ×Í¡=LªIdentifierÍ×Íé²MUTIL_PINYIN_TABLET®CallExpressionÍìÍU°MemberExpressionÍìÍùLªIdentifierÍìÍò¦ObjectLªIdentifierÍóÍù¦assignÂÂ’LªIdentifierÍúÍı£resLªIdentifierÍÿÍ²MUTIL_PINYIN_TABLEÂÀ’Ôrb•¤type¥start£endªspecifiers¦source±ImportDeclarationÌAÌu‘Ôrc•¤type¥start£end¨imported¥local¯ImportSpecifierÌJÌXLªIdentifierÌJÌX®PinyinResourceLªIdentifierÌJÌX®PinyinResourceO§LiteralÌ`Ìu³./PinyinResource.jsµ"./PinyinResource.js"b±ImportDeclarationÌwÌ©‘c¯ImportSpecifierÌ€ÌLªIdentifierÌ€Ì­ChineseHelperLªIdentifierÌ€Ì­ChineseHelperO§LiteralÌ•Ì©²./ChineseHelper.js´"./ChineseHelper.js"
