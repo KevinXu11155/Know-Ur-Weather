@@ -1,0 +1,44 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "label"
+    },
+    {
+      "name": "app_name",
+      "value": "天气预报"
+    },
+    {
+      "name": "refresh",
+      "value": "刷新"
+    },
+    {
+      "name": "settings",
+      "value": "设置"
+    },
+    {
+      "name": "current_weather",
+      "value": "当前天气"
+    },
+    {
+      "name": "weather_details",
+      "value": "天气详情"
+    },
+    {
+      "name": "internet_permission",
+      "value": "用于获取天气数据"
+    },
+    {
+      "name": "database_permission",
+      "value": "用于存储天气数据"
+    }
+  ]
+}
