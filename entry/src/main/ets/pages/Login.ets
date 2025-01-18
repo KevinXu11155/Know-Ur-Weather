@@ -8,9 +8,20 @@ struct Login {
   @State username: string = '';
   @State password: string = '';
   @State isLoading: boolean = false;
+  @State lastLocalTime: string = ""
+  @State last: string = '';
+
+
+  aboutToAppear(): void {
+    this
+  }
 
   build() {
     Column() {
+      Text("懂你天气")
+        .fontColor('#096789')
+        .fontSize(70)
+
       Text('登录')
         .fontSize(28)
         .fontWeight(FontWeight.Bold)
