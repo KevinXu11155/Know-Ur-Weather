@@ -1,7 +1,0 @@
-{
-  "entry\\src\\main\\ets\\pages\\Index.ets": [
-    "ohos.web.webview",
-    "ohos.router",
-    "ohos.promptAction"
-  ]
-}

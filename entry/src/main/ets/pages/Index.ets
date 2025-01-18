@@ -10,6 +10,81 @@ import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
 import preferences from '@ohos.data.preferences';
 import common from '@ohos.app.ability.common';
+import taskpool from '@ohos.taskpool';
+
+//根据城市名字获取对应URL
+@Concurrent
+function getUrl(currentCity: string, CityID: string, CurBp: string): string {
+  let province: string = 'BJ';
+  let currentCityPinYin: string = pinyin4js.convertToPinyinString(currentCity, '', pinyin4js.WITHOUT_TONE);
+
+  if (currentCity === '呼和浩特') {
+    currentCityPinYin = 'saihan1';
+  }
+
+  let province_id: string = CityID.substring(0, 2);
+  switch (province_id) {
+    case '11': province = 'BJ'; break; // 北京
+    case '12': province = 'TJ'; break; // 天津
+    case '13': province = 'HE'; break; // 河北
+    case '14': province = 'SX'; break; // 山西
+    case '15': province = 'NM'; break; // 内蒙古
+    case '21': province = 'LN'; break; // 辽宁
+    case '22': province = 'JL'; break; // 吉林
+    case '23': province = 'HL'; break; // 黑龙江
+    case '31': province = 'SH'; break; // 上海
+    case '32': province = 'JS'; break; // 江苏
+    case '33': province = 'ZJ'; break; // 浙江
+    case '34': province = 'AH'; break; // 安徽
+    case '35': province = 'FJ'; break; // 福建
+    case '36': province = 'JX'; break; // 江西
+    case '37': province = 'SD'; break; // 山东
+    case '41': province = 'HA'; break; // 河南
+    case '42': province = 'HB'; break; // 湖北
+    case '43': province = 'HN'; break; // 湖南
+    case '44': province = 'GD'; break; // 广东
+    case '45': province = 'GX'; break; // 广西
+    case '46': province = 'HI'; break; // 海南
+    case '50': province = 'CQ'; break; // 重庆
+    case '51': province = 'SC'; break; // 四川
+    case '52': province = 'GZ'; break; // 贵州
+    case '53': province = 'YN'; break; // 云南
+    case '54': province = 'XZ'; break; // 西藏
+    case '61': province = 'SN'; break; // 陕西
+    case '62': province = 'GS'; break; // 甘肃
+    case '63': province = 'QH'; break; // 青海
+    case '64': province = 'NX'; break; // 宁夏
+    case '65': province = 'XJ'; break; // 新疆
+    case '81': province = 'XG'; break; // 香港
+    case '82': province = 'AM'; break; // 澳门
+    case '71': province = 'TW'; break; // 台湾
+  }
+
+  const url_sm = `http://m.nmc.cn/publish/forecast/A${province}/${currentCityPinYin}.html`;
+  const url_lg = `http://www.nmc.cn/publish/forecast/A${province}/${currentCityPinYin}.html`;
+
+  return CurBp === 'sm' ? url_sm : url_lg;
+}
+
+
+
+export class UrlTask {
+  static async getUrlForWebView(currentCity: string, CityID: string, CurBp: string): Promise<string> {
+    // 创建Task对象时，传递一个函数引用
+
+    let task = new taskpool.Task(getUrl, currentCity, CityID, CurBp)
+    try {
+      // 等待 taskpool.execute(task) 解析并获取结果
+      let res = await taskpool.execute(task) as string
+      console.info(`MyTask handleReadFile ${res}`)
+      return res
+    } catch (error) {
+      // 处理可能出现的错误
+      console.error('MyTask execution failed:', error);
+      return '-1'
+    }
+  }
+}
 
 interface GeneratedObjectLiteralInterface_1 {
   success: boolean;
@@ -54,89 +129,7 @@ struct Index {
       // 获取当前城市
       this.currentCity = await StorageUtil.getCurrentCity();
       this.CityID = await HttpUtil.getCityId(this.currentCity);
-      this.currentCityPinYin = pinyin4js.convertToPinyinString(this.currentCity, '', pinyin4js.WITHOUT_TONE);
-      if(this.currentCity == '呼和浩特'){
-        this.currentCityPinYin = 'saihan1';
-      }
-
-      this.province_id  = this.CityID.substring(0,2);
-      if (this.province_id === '11') {
-        this.province = 'BJ'; // 北京
-      } else if (this.province_id === '12') {
-        this.province = 'TJ'; // 天津
-      } else if (this.province_id === '13') {
-        this.province = 'HE'; // 河北
-      } else if (this.province_id === '14') {
-        this.province = 'SX'; // 山西
-      } else if (this.province_id === '15') {
-        this.province = 'NM'; // 内蒙古
-      } else if (this.province_id === '21') {
-        this.province = 'LN'; // 辽宁
-      } else if (this.province_id === '22') {
-        this.province = 'JL'; // 吉林
-      } else if (this.province_id === '23') {
-        this.province = 'HL'; // 黑龙江
-      } else if (this.province_id === '31') {
-        this.province = 'SH'; // 上海
-      } else if (this.province_id === '32') {
-        this.province = 'JS'; // 江苏
-      } else if (this.province_id === '33') {
-        this.province = 'ZJ'; // 浙江
-      } else if (this.province_id === '34') {
-        this.province = 'AH'; // 安徽
-      } else if (this.province_id === '35') {
-        this.province = 'FJ'; // 福建
-      } else if (this.province_id === '36') {
-        this.province = 'JX'; // 江西
-      } else if (this.province_id === '37') {
-        this.province = 'SD'; // 山东
-      } else if (this.province_id === '41') {
-        this.province = 'HA'; // 河南
-      } else if (this.province_id === '42') {
-        this.province = 'HB'; // 湖北
-      } else if (this.province_id === '43') {
-        this.province = 'HN'; // 湖南
-      } else if (this.province_id === '44') {
-        this.province = 'GD'; // 广东
-      } else if (this.province_id === '45') {
-        this.province = 'GX'; // 广西
-      } else if (this.province_id === '46') {
-        this.province = 'HI'; // 海南
-      } else if (this.province_id === '50') {
-        this.province = 'CQ'; // 重庆
-      } else if (this.province_id === '51') {
-        this.province = 'SC'; // 四川
-      } else if (this.province_id === '52') {
-        this.province = 'GZ'; // 贵州
-      } else if (this.province_id === '53') {
-        this.province = 'YN'; // 云南
-      } else if (this.province_id === '54') {
-        this.province = 'XZ'; // 西藏
-      } else if (this.province_id === '61') {
-        this.province = 'SN'; // 陕西
-      } else if (this.province_id === '62') {
-        this.province = 'GS'; // 甘肃
-      } else if (this.province_id === '63') {
-        this.province = 'QH'; // 青海
-      } else if (this.province_id === '64') {
-        this.province = 'NX'; // 宁夏
-      } else if (this.province_id === '65') {
-        this.province = 'XJ'; // 新疆
-      } else if (this.province_id === '81') {
-        this.province = 'XG'; // 香港
-      } else if (this.province_id === '82') {
-        this.province = 'AM'; // 澳门
-      } else if (this.province_id === '71') {
-        this.province = 'TW'; // 台湾
-      }
-      this.url_sm =  'http://m.nmc.cn/publish/forecast/A' + this.province + '/' + this.currentCityPinYin + '.html';
-      this.url_lg =  'http://www.nmc.cn/publish/forecast/A' + this.province + '/' + this.currentCityPinYin + '.html';
-      if(this.curBp === 'sm'){
-        this.url = this.url_sm;
-      }
-      else{
-        this.url = this.url_lg;
-      }
+      this.url = await UrlTask.getUrlForWebView(this.currentCity, this.CityID, this.curBp);
       this.controller.loadUrl(this.url);
       console.info('网页信息SM', this.url_sm);
       console.info('网页信息LG', this.url_lg);
