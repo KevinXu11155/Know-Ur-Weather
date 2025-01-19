@@ -90,14 +90,14 @@ export class UserUtil {
     return user || null;
   }
 
-  //shezhidangqiandengluyonghu
+  //设置当前登录用户
   static async setCurrentUser(username: string): Promise<void> {
     const prefer = await UserUtil.getPreferences();
     await prefer.put(UserUtil.KEY_CURRENT_USER, username);
     await prefer.flush();
   }
 
-  //qingchudengluzhuangtai
+  //清除登录状态
   static async clearLoginState(): Promise<void> {
     const prefer = await UserUtil.getPreferences();
     await prefer.delete(UserUtil.KEY_CURRENT_USER);
